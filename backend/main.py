@@ -71,10 +71,12 @@ async def generate_roadmap(req: RoadmapRequest):
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(
                 OPENROUTER_URL,
-                headers={
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json",
-                },
+               headers = {
+    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Content-Type": "application/json",
+    "HTTP-Referer": "https://it-career-compass-six.vercel.app",
+    "X-Title": "IT Career Compass"
+},
                 json={
                     "model": "stepfun/step-3.5-flash:free",
                     "messages": [{"role": "user", "content": prompt}],
