@@ -1,17 +1,13 @@
-import json
-import os
-import re
-
-import httpx
-from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import httpx
+import os
+import json
 
-load_dotenv()
+app = FastAPI()
 
-app = FastAPI(title="IT Career Compass API")
-
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,102 +16,88 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-
+HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 
 class RoadmapRequest(BaseModel):
     level: str
     position: str
 
+@app.post("/generate-roadmap")
+async def generate_roadmap(request: RoadmapRequest):
+    if not HUGGINGFACE_API_KEY:
+        raise HTTPException(status_code=500, detail="API key not configured")
+    
+    prompt = f"""Створи детальний roadmap для {request.level} {request.position} розробника українською мовою.
 
-class RoadmapResponse(BaseModel):
-    skills: list[str]
-    roadmap: dict[str, list[str]]
-    checklist: list[str]
-
-
-PROMPT_TEMPLATE = """Створи детальний roadmap для {level} {position} в українському IT.
-
-Вимоги:
-- Реалістичні навички за стандартами DOU/Djinni
-- Практичні, конкретні дії
-- План підготовки на 3-4 тижні
-- Кожен тиждень — 4-6 конкретних задач
-- Checklist — 8-12 пунктів готовності
-
-Дай відповідь ТІЛЬКИ у форматі JSON (без markdown, без ```):
+Формат відповіді - ТІЛЬКИ JSON (без пояснень, без markdown):
 {{
-  "skills": ["навичка1", "навичка2", ...],
-  "roadmap": {{
-    "week1": ["задача1", "задача2", ...],
-    "week2": ["задача1", "задача2", ...],
-    "week3": ["задача1", "задача2", ...],
-    "week4": ["задача1", "задача2", ...]
-  }},
-  "checklist": ["пункт1", "пункт2", ...]
-}}"""
+  "title": "Roadmap для {request.level} {request.position}",
+  "steps": [
+    {{
+      "month": 1,
+      "title": "Назва етапу",
+      "description": "Опис що вивчати",
+      "skills": ["навичка1", "навичка2"],
+      "resources": ["ресурс1", "ресурс2"]
+    }}
+  ]
+}}
 
-
-@app.post("/generate-roadmap", response_model=RoadmapResponse)
-async def generate_roadmap(req: RoadmapRequest):
-    if not req.position.strip():
-        raise HTTPException(status_code=400, detail="Position is required")
-
-    if req.level not in ("Trainee", "Junior", "Middle", "Senior"):
-        raise HTTPException(status_code=400, detail="Invalid level")
-
-    prompt = PROMPT_TEMPLATE.format(level=req.level, position=req.position.strip())
+Зроби 6 етапів (по місяцях)."""
 
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                OPENROUTER_URL,
-               headers = {
-    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-    "Content-Type": "application/json",
-    "HTTP-Referer": "https://it-career-compass-six.vercel.app",
-    "X-Title": "IT Career Compass"
-},
-                json={
-                    "model": "stepfun/step-3.5-flash:free",
-                    "messages": [{"role": "user", "content": prompt}],
+                "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
+                headers={
+                    "Authorization": f"Bearer {HUGGINGFACE_API_KEY}",
+                    "Content-Type": "application/json"
                 },
+                json={
+                    "inputs": prompt,
+                    "parameters": {
+                        "max_new_tokens": 2000,
+                        "temperature": 0.7,
+                        "return_full_text": False
+                    }
+                }
             )
-
-        if response.status_code != 200:
-            raise HTTPException(
-                status_code=502,
-                detail=f"OpenRouter error: {response.text}",
-            )
-
-        result = response.json()
-        raw = result["choices"][0]["message"]["content"].strip()
-
-        # strip DeepSeek <think>...</think> blocks
-        raw = re.sub(r"<think>[\s\S]*?</think>", "", raw).strip()
-
-        # strip markdown fences if present
-        if raw.startswith("```"):
-            raw = raw.split("\n", 1)[1]
-        if raw.endswith("```"):
-            raw = raw.rsplit("```", 1)[0]
-        raw = raw.strip()
-
-        data = json.loads(raw)
-        return RoadmapResponse(
-            skills=data["skills"],
-            roadmap=data["roadmap"],
-            checklist=data["checklist"],
-        )
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=502, detail="Failed to parse AI response")
-    except HTTPException:
-        raise
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=502, detail=f"HuggingFace API error: {response.text}")
+            
+            result = response.json()
+            
+            # HuggingFace повертає список
+            if isinstance(result, list) and len(result) > 0:
+                generated_text = result[0].get("generated_text", "")
+            else:
+                generated_text = str(result)
+            
+            # Парсинг JSON
+            try:
+                roadmap_data = json.loads(generated_text)
+                return roadmap_data
+            except json.JSONDecodeError:
+                # Якщо не JSON, створюємо базовий roadmap
+                return {
+                    "title": f"Roadmap для {request.level} {request.position}",
+                    "steps": [
+                        {
+                            "month": 1,
+                            "title": "Основи",
+                            "description": generated_text[:200],
+                            "skills": ["Базові навички"],
+                            "resources": ["Документація"]
+                        }
+                    ]
+                }
+    
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Request timeout")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"API error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "IT Career Compass API"}
