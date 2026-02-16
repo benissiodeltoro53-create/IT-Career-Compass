@@ -30,18 +30,18 @@ async def generate_roadmap(request: RoadmapRequest):
     prompt = f"""Створи детальний roadmap для {request.level} {request.position} розробника українською мовою.
 
 Формат відповіді - ТІЛЬКИ JSON (без пояснень, без markdown):
-{{
+{{{{
   "title": "Roadmap для {request.level} {request.position}",
   "steps": [
-    {{
+    {{{{
       "month": 1,
       "title": "Назва етапу",
       "description": "Опис що вивчати",
       "skills": ["навичка1", "навичка2"],
       "resources": ["ресурс1", "ресурс2"]
-    }}
+    }}}}
   ]
-}}
+}}}}
 
 Зроби 6 етапів (по місяцях)."""
 
@@ -81,4 +81,20 @@ async def generate_roadmap(request: RoadmapRequest):
                     "title": f"Roadmap для {request.level} {request.position}",
                     "steps": [
                         {
-                            "month":
+                            "month": 1,
+                            "title": "Основи",
+                            "description": generated_text[:200],
+                            "skills": ["Базові навички"],
+                            "resources": ["Документація"]
+                        }
+                    ]
+                }
+    
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Request timeout")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "IT Career Compass API"}
