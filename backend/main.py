@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import httpx
 import os
 import json
+import re
 
 app = FastAPI()
 
@@ -27,23 +28,30 @@ async def generate_roadmap(request: RoadmapRequest):
     if not HUGGINGFACE_API_KEY:
         raise HTTPException(status_code=500, detail="API key not configured")
     
-    prompt = f"""Створи детальний roadmap для {request.level} {request.position} розробника українською мовою.
+    prompt = f"""Create a detailed 6-month roadmap for {request.level} {request.position} developer in Ukrainian.
 
-Формат відповіді - ТІЛЬКИ JSON (без пояснень, без markdown):
-{{{{
+Response format - ONLY valid JSON (no explanations, no markdown):
+{{
   "title": "Roadmap для {request.level} {request.position}",
   "steps": [
-    {{{{
+    {{
       "month": 1,
       "title": "Назва етапу",
-      "description": "Опис що вивчати",
+      "description": "Опис що вивчати цього місяця",
+      "skills": ["навичка1", "навичка2", "навичка3"],
+      "resources": ["ресурс1", "ресурс2"]
+    }},
+    {{
+      "month": 2,
+      "title": "Назва етапу",
+      "description": "Опис що вивчати цього місяця",
       "skills": ["навичка1", "навичка2"],
       "resources": ["ресурс1", "ресурс2"]
-    }}}}
+    }}
   ]
-}}}}
+}}
 
-Зроби 6 етапів (по місяцях)."""
+Generate 6 steps (months 1-6). Return ONLY the JSON, nothing else."""
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -67,25 +75,73 @@ async def generate_roadmap(request: RoadmapRequest):
                 raise HTTPException(status_code=502, detail=f"HuggingFace API error: {response.text}")
             
             result = response.json()
-            
-            # Парсинг відповіді
             generated_text = result["choices"][0]["message"]["content"]
+            
+            # Видалити markdown
+            generated_text = re.sub(r'```json\s*', '', generated_text)
+            generated_text = re.sub(r'```\s*', '', generated_text)
+            generated_text = generated_text.strip()
             
             # Парсинг JSON
             try:
                 roadmap_data = json.loads(generated_text)
+                
+                # Валідація структури
+                if not isinstance(roadmap_data.get("steps"), list):
+                    raise ValueError("Invalid steps format")
+                
+                # Переконатись що є хоча б 1 крок
+                if len(roadmap_data["steps"]) == 0:
+                    raise ValueError("No steps generated")
+                
                 return roadmap_data
-            except json.JSONDecodeError:
-                # Якщо не JSON, створюємо базовий roadmap
+                
+            except (json.JSONDecodeError, ValueError) as e:
+                # Fallback - створити базовий roadmap
                 return {
                     "title": f"Roadmap для {request.level} {request.position}",
                     "steps": [
                         {
                             "month": 1,
-                            "title": "Основи",
-                            "description": generated_text[:200],
-                            "skills": ["Базові навички"],
-                            "resources": ["Документація"]
+                            "title": "Основи програмування",
+                            "description": "Вивчення базових концепцій та синтаксису мови програмування",
+                            "skills": ["Синтаксис мови", "Змінні та типи даних", "Умови та цикли"],
+                            "resources": ["Офіційна документація", "Онлайн курси"]
+                        },
+                        {
+                            "month": 2,
+                            "title": "Структури даних",
+                            "description": "Вивчення основних структур даних та алгоритмів",
+                            "skills": ["Масиви", "Об'єкти", "Базові алгоритми"],
+                            "resources": ["LeetCode", "Книги з алгоритмів"]
+                        },
+                        {
+                            "month": 3,
+                            "title": "Фреймворки",
+                            "description": "Освоєння популярних фреймворків для розробки",
+                            "skills": ["React/Vue/Angular", "State management", "Routing"],
+                            "resources": ["Офіційна документація фреймворку"]
+                        },
+                        {
+                            "month": 4,
+                            "title": "Бекенд основи",
+                            "description": "Вивчення серверної розробки та баз даних",
+                            "skills": ["REST API", "Бази даних", "Аутентифікація"],
+                            "resources": ["Node.js/Python документація"]
+                        },
+                        {
+                            "month": 5,
+                            "title": "Тестування та DevOps",
+                            "description": "Автоматизація тестування та deployment",
+                            "skills": ["Unit тести", "Git", "CI/CD"],
+                            "resources": ["Jest/Pytest документація"]
+                        },
+                        {
+                            "month": 6,
+                            "title": "Pet проект та портфоліо",
+                            "description": "Створення повноцінного проекту для портфоліо",
+                            "skills": ["Full-stack розробка", "Deploy", "Документація"],
+                            "resources": ["GitHub", "Vercel/Netlify"]
                         }
                     ]
                 }
