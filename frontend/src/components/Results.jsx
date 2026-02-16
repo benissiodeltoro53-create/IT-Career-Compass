@@ -80,3 +80,9 @@ export default function Results({ data, onReset }) {
           onClick={onReset}
           className="px-8 py-4 rounded-xl text-lg font-bold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/30 hover:shadow-xl"
         >
+          Нова позиція
+        </button>
+      </div>
+    </div>
+  );
+}
