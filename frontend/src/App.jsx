@@ -15,12 +15,18 @@ export default function App() {
     setError(null);
     setResult(null);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 секунд
+
     try {
       const res = await fetch(`${API_URL}/generate-roadmap`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ level, position }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -30,7 +36,11 @@ export default function App() {
       const data = await res.json();
       setResult(data);
     } catch (e) {
-      setError(e.message);
+      if (e.name === 'AbortError') {
+        setError('Запит занадто довгий. Спробуйте ще раз (перший запит може тривати до 60 секунд).');
+      } else {
+        setError(e.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -53,12 +63,8 @@ export default function App() {
       </header>
 
       <main className="w-full max-w-3xl">
-        {!result && !loading && (
-          <Form onSubmit={handleSubmit} />
-        )}
-
+        {!result && !loading && <Form onSubmit={handleSubmit} />}
         {loading && <Loader />}
-
         {error && (
           <div className="animate-fade-in bg-red-500/20 border border-red-500/40 rounded-2xl p-6 text-center">
             <p className="text-red-300 text-lg mb-4">{error}</p>
@@ -70,7 +76,6 @@ export default function App() {
             </button>
           </div>
         )}
-
         {result && <Results data={result} onReset={handleReset} />}
       </main>
 
