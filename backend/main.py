@@ -48,18 +48,18 @@ async def generate_roadmap(request: RoadmapRequest):
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
+                "https://router.huggingface.co/v1/chat/completions",
                 headers={
                     "Authorization": f"Bearer {HUGGINGFACE_API_KEY}",
                     "Content-Type": "application/json"
                 },
                 json={
-                    "inputs": prompt,
-                    "parameters": {
-                        "max_new_tokens": 2000,
-                        "temperature": 0.7,
-                        "return_full_text": False
-                    }
+                    "model": "mistralai/Mistral-7B-Instruct-v0.2",
+                    "messages": [
+                        {"role": "user", "content": prompt}
+                    ],
+                    "max_tokens": 2000,
+                    "temperature": 0.7
                 }
             )
             
@@ -68,11 +68,8 @@ async def generate_roadmap(request: RoadmapRequest):
             
             result = response.json()
             
-            # HuggingFace повертає список
-            if isinstance(result, list) and len(result) > 0:
-                generated_text = result[0].get("generated_text", "")
-            else:
-                generated_text = str(result)
+            # Парсинг відповіді
+            generated_text = result["choices"][0]["message"]["content"]
             
             # Парсинг JSON
             try:
@@ -84,20 +81,4 @@ async def generate_roadmap(request: RoadmapRequest):
                     "title": f"Roadmap для {request.level} {request.position}",
                     "steps": [
                         {
-                            "month": 1,
-                            "title": "Основи",
-                            "description": generated_text[:200],
-                            "skills": ["Базові навички"],
-                            "resources": ["Документація"]
-                        }
-                    ]
-                }
-    
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="Request timeout")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/")
-async def root():
-    return {"status": "ok", "message": "IT Career Compass API"}
+                            "month":
