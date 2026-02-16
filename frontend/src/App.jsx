@@ -3,7 +3,7 @@ import Form from "./components/Form";
 import Results from "./components/Results";
 import Loader from "./components/Loader";
 
-const API_URL = import.meta.env.VITE_API_URL || "";
+const API_URL = "https://it-career-compass.onrender.com";
 
 export default function App() {
   const [result, setResult] = useState(null);
