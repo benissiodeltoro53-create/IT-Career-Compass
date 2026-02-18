@@ -28,71 +28,71 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_data.json")
 
 QUOTES_NIETZSCHE = [
-    ("Те, що нас не вбиває, робить нас сильнішими", "Фрідріх Ніцше"),
-    ("Без музики життя було б помилкою", "Фрідріх Ніцше"),
-    ("Стань тим, хто ти є", "Фрідріх Ніцше"),
-    ("Бог помер, і ми його вбили", "Фрідріх Ніцше"),
-    ("Хто має Навіщо жити, може витримати майже будь-яке Як", "Фрідріх Ніцше"),
+    ("What does not kill me makes me stronger", "Friedrich Nietzsche"),
+    ("Without music, life would be a mistake", "Friedrich Nietzsche"),
+    ("Become who you are", "Friedrich Nietzsche"),
+    ("God is dead, and we have killed him", "Friedrich Nietzsche"),
+    ("He who has a Why to live can bear almost any How", "Friedrich Nietzsche"),
     (
-        "Той, хто бореться з чудовиськами, має стежити, "
-        "щоб самому не стати чудовиськом",
-        "Фрідріх Ніцше",
+        "He who fights with monsters should see to it "
+        "that he himself does not become a monster",
+        "Friedrich Nietzsche",
     ),
     (
-        "Все, що робиться з любові, перебуває по той бік добра і зла",
-        "Фрідріх Ніцше",
+        "Everything done out of love takes place beyond good and evil",
+        "Friedrich Nietzsche",
     ),
-    ("Думки приходять, коли вони хочуть, а не коли хочу я", "Фрідріх Ніцше"),
-    ("Істина потворна", "Фрідріх Ніцше"),
+    ("Thoughts come when they want to, not when I want them to", "Friedrich Nietzsche"),
+    ("Truth is ugly", "Friedrich Nietzsche"),
     (
-        "Людина — це канат, натягнутий між твариною і надлюдиною",
-        "Фрідріх Ніцше",
+        "Man is a rope stretched between the animal and the overman",
+        "Friedrich Nietzsche",
     ),
-    ("На самоті виростає те, що кожен у собі носить", "Фрідріх Ніцше"),
-    ("Немає фактів, є лише інтерпретації", "Фрідріх Ніцше"),
+    ("In solitude, what everyone carries within themselves grows", "Friedrich Nietzsche"),
+    ("There are no facts, only interpretations", "Friedrich Nietzsche"),
     (
-        "Що абстрактніша істина, то привабливіша вона для розуму",
-        "Фрідріх Ніцше",
+        "The more abstract the truth, the more appealing it is to the mind",
+        "Friedrich Nietzsche",
     ),
     (
-        "Я люблю тих, хто не знає, як жити інакше, ніж гинучи",
-        "Фрідріх Ніцше",
+        "I love those who do not know how to live except by going under",
+        "Friedrich Nietzsche",
     ),
-    ("У кого немає двох третин дня для себе, той раб", "Фрідріх Ніцше"),
+    ("Anyone who does not have two-thirds of the day for himself is a slave", "Friedrich Nietzsche"),
 ]
 
 QUOTES_SCHOPENHAUER = [
     (
-        "Життя подібне до маятника, що хитається між стражданням і нудьгою",
-        "Артур Шопенгауер",
+        "Life swings like a pendulum between suffering and boredom",
+        "Arthur Schopenhauer",
     ),
     (
-        "Талант влучає в ціль, у яку ніхто не може влучити; "
-        "геній влучає в ціль, яку ніхто не бачить",
-        "Артур Шопенгауер",
+        "Talent hits a target no one else can hit; "
+        "genius hits a target no one else can see",
+        "Arthur Schopenhauer",
     ),
     (
-        "Кожен приймає межу свого кругозору за межу світу",
-        "Артур Шопенгауер",
+        "Every person takes the limits of their own field of vision for the limits of the world",
+        "Arthur Schopenhauer",
     ),
-    ("Здоровий жебрак щасливіший за хворого короля", "Артур Шопенгауер"),
+    ("A healthy beggar is happier than a sick king", "Arthur Schopenhauer"),
     (
-        "Стан щастя — це стан відсутності страждання",
-        "Артур Шопенгауер",
+        "Happiness is the absence of suffering",
+        "Arthur Schopenhauer",
     ),
     (
-        "Самотність дає інтелектуальній людині подвійну перевагу: "
-        "бути з самим собою і не бути з іншими",
-        "Артур Шопенгауер",
+        "Solitude gives the intellectual person a double advantage: "
+        "being with oneself and not being with others",
+        "Arthur Schopenhauer",
     ),
 ]
 
 ALL_QUOTES = QUOTES_NIETZSCHE + QUOTES_SCHOPENHAUER
 
 # Category button labels
-BTN_NIETZSCHE = "Ніцше"
-BTN_SCHOPENHAUER = "Шопенгауер"
-BTN_RANDOM = "Випадкова"
+BTN_NIETZSCHE = "Nietzsche"
+BTN_SCHOPENHAUER = "Schopenhauer"
+BTN_RANDOM = "Random"
 
 CATEGORY_MAP = {
     BTN_NIETZSCHE: "nietzsche",
@@ -204,7 +204,6 @@ def generate_quote_image(text: str, author: str) -> bytes:
 
 # --- keyboards ---
 
-# Fixed bottom keyboard (ReplyKeyboard — always visible near input)
 BOTTOM_KEYBOARD = ReplyKeyboardMarkup(
     [[KeyboardButton(BTN_NIETZSCHE), KeyboardButton(BTN_SCHOPENHAUER), KeyboardButton(BTN_RANDOM)]],
     resize_keyboard=True,
@@ -215,7 +214,7 @@ def quote_keyboard(quote_index: int, category: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton("\U0001f4e4 Share", callback_data=f"share_{quote_index}"),
-            InlineKeyboardButton("Ще цитату!", callback_data=f"next_{category}"),
+            InlineKeyboardButton("Next quote!", callback_data=f"next_{category}"),
         ],
     ])
 
@@ -241,15 +240,15 @@ def pick_quote(category: str) -> tuple[int, str, str]:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
-        "Привіт! Я бот з філософськими цитатами Ніцше та Шопенгауера.\n\n"
-        "Обери категорію внизу або натисни /quote для випадкової цитати.",
+        "Hello! I'm a bot with philosophical quotes by Nietzsche and Schopenhauer.\n\n"
+        "Pick a category below or press /quote for a random quote.",
         reply_markup=BOTTOM_KEYBOARD,
     )
 
 
 async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
-        "\n" * 50 + "Чат очищено! Обери категорію внизу.",
+        "\n" * 50 + "Chat cleared! Pick a category below.",
         reply_markup=BOTTOM_KEYBOARD,
     )
 
@@ -270,8 +269,8 @@ async def daily(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         idx = user["daily_quote"]
         text, author = ALL_QUOTES[idx]
         await update.message.reply_text(
-            f"Твоя цитата на сьогодні:\n\n{format_quote(text, author)}\n\n"
-            "(Наступна буде завтра!)",
+            f"Your quote for today:\n\n{format_quote(text, author)}\n\n"
+            "(Next one tomorrow!)",
             reply_markup=quote_keyboard(idx, "random"),
         )
         return
@@ -283,7 +282,7 @@ async def daily(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     text, author = ALL_QUOTES[idx]
     await update.message.reply_text(
-        f"Цитата дня:\n\n{format_quote(text, author)}",
+        f"Quote of the day:\n\n{format_quote(text, author)}",
         reply_markup=quote_keyboard(idx, "random"),
     )
 
@@ -322,8 +321,8 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def post_init(application) -> None:
     await application.bot.set_my_commands([
-        BotCommand("start", "Запустити бота"),
-        BotCommand("clear", "Очистити чат"),
+        BotCommand("start", "Start the bot"),
+        BotCommand("clear", "Clear the chat"),
     ])
 
 
