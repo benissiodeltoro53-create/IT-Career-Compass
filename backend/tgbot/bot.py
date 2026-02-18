@@ -231,15 +231,11 @@ def generate_quote_image(text: str, author: str) -> bytes:
 def philosopher_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("\u041d\u0456\u0446\u0448\u0435", callback_data="cat_nietzsche"),
-            InlineKeyboardButton("\u0428\u043e\u043f\u0435\u043d\u0433\u0430\u0443\u0435\u0440", callback_data="cat_schopenhauer"),
-        ],
-        [
             InlineKeyboardButton("\u041a\u0430\u043d\u0442", callback_data="cat_kant"),
             InlineKeyboardButton("\u0421\u0435\u043d\u0435\u043a\u0430", callback_data="cat_seneca"),
+            InlineKeyboardButton("\u041c\u0430\u0440\u043a \u0410\u0432\u0440\u0435\u043b\u0456\u0439", callback_data="cat_aurelius"),
         ],
         [
-            InlineKeyboardButton("\u041c\u0430\u0440\u043a \u0410\u0432\u0440\u0435\u043b\u0456\u0439", callback_data="cat_aurelius"),
             InlineKeyboardButton("\ud83c\udfb2 \u0412\u0438\u043f\u0430\u0434\u043a\u043e\u0432\u0430", callback_data="cat_random"),
         ],
     ])
