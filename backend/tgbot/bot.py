@@ -4,15 +4,13 @@ import json
 import os
 import random
 import textwrap
-from datetime import date
+from datetime import date, time, datetime, timezone, timedelta
 
 from PIL import Image, ImageDraw, ImageFont
 from telegram import (
     BotCommand,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    KeyboardButton,
-    ReplyKeyboardMarkup,
     Update,
 )
 from telegram.ext import (
@@ -20,110 +18,103 @@ from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
-    MessageHandler,
-    filters,
 )
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_data.json")
 
+# --- quotes ---
+
 QUOTES_NIETZSCHE = [
-    ("What does not kill me makes me stronger", "Friedrich Nietzsche"),
-    ("Without music, life would be a mistake", "Friedrich Nietzsche"),
-    ("Become who you are", "Friedrich Nietzsche"),
-    ("God is dead, and we have killed him", "Friedrich Nietzsche"),
-    ("He who has a Why to live can bear almost any How", "Friedrich Nietzsche"),
+    ("\u0422\u0435, \u0449\u043e \u043d\u0430\u0441 \u043d\u0435 \u0432\u0431\u0438\u0432\u0430\u0454, \u0440\u043e\u0431\u0438\u0442\u044c \u043d\u0430\u0441 \u0441\u0438\u043b\u044c\u043d\u0456\u0448\u0438\u043c\u0438", "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435"),
+    ("\u0411\u0435\u0437 \u043c\u0443\u0437\u0438\u043a\u0438 \u0436\u0438\u0442\u0442\u044f \u0431\u0443\u043b\u043e \u0431 \u043f\u043e\u043c\u0438\u043b\u043a\u043e\u044e", "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435"),
+    ("\u0421\u0442\u0430\u043d\u044c \u0442\u0438\u043c, \u0445\u0442\u043e \u0442\u0438 \u0454", "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435"),
+    ("\u0411\u043e\u0433 \u043f\u043e\u043c\u0435\u0440, \u0456 \u043c\u0438 \u0439\u043e\u0433\u043e \u0432\u0431\u0438\u043b\u0438", "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435"),
+    ("\u0425\u0442\u043e \u043c\u0430\u0454 \u041d\u0430\u0432\u0456\u0449\u043e \u0436\u0438\u0442\u0438, \u043c\u043e\u0436\u0435 \u0432\u0438\u0442\u0440\u0438\u043c\u0430\u0442\u0438 \u043c\u0430\u0439\u0436\u0435 \u0431\u0443\u0434\u044c-\u044f\u043a\u0435 \u042f\u043a", "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435"),
     (
-        "He who fights with monsters should see to it "
-        "that he himself does not become a monster",
-        "Friedrich Nietzsche",
+        "\u0422\u043e\u0439, \u0445\u0442\u043e \u0431\u043e\u0440\u0435\u0442\u044c\u0441\u044f \u0437 \u0447\u0443\u0434\u043e\u0432\u0438\u0441\u044c\u043a\u0430\u043c\u0438, \u043c\u0430\u0454 \u0441\u0442\u0435\u0436\u0438\u0442\u0438, "
+        "\u0449\u043e\u0431 \u0441\u0430\u043c\u043e\u043c\u0443 \u043d\u0435 \u0441\u0442\u0430\u0442\u0438 \u0447\u0443\u0434\u043e\u0432\u0438\u0441\u044c\u043a\u043e\u043c",
+        "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435",
     ),
     (
-        "Everything done out of love takes place beyond good and evil",
-        "Friedrich Nietzsche",
+        "\u0412\u0441\u0435, \u0449\u043e \u0440\u043e\u0431\u0438\u0442\u044c\u0441\u044f \u0437 \u043b\u044e\u0431\u043e\u0432\u0456, \u043f\u0435\u0440\u0435\u0431\u0443\u0432\u0430\u0454 \u043f\u043e \u0442\u043e\u0439 \u0431\u0456\u043a \u0434\u043e\u0431\u0440\u0430 \u0456 \u0437\u043b\u0430",
+        "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435",
     ),
-    ("Thoughts come when they want to, not when I want them to", "Friedrich Nietzsche"),
-    ("Truth is ugly", "Friedrich Nietzsche"),
+    ("\u0414\u0443\u043c\u043a\u0438 \u043f\u0440\u0438\u0445\u043e\u0434\u044f\u0442\u044c, \u043a\u043e\u043b\u0438 \u0432\u043e\u043d\u0438 \u0445\u043e\u0447\u0443\u0442\u044c, \u0430 \u043d\u0435 \u043a\u043e\u043b\u0438 \u0445\u043e\u0447\u0443 \u044f", "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435"),
+    ("\u0406\u0441\u0442\u0438\u043d\u0430 \u043f\u043e\u0442\u0432\u043e\u0440\u043d\u0430", "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435"),
     (
-        "Man is a rope stretched between the animal and the overman",
-        "Friedrich Nietzsche",
+        "\u041b\u044e\u0434\u0438\u043d\u0430 \u2014 \u0446\u0435 \u043a\u0430\u043d\u0430\u0442, \u043d\u0430\u0442\u044f\u0433\u043d\u0443\u0442\u0438\u0439 \u043c\u0456\u0436 \u0442\u0432\u0430\u0440\u0438\u043d\u043e\u044e \u0456 \u043d\u0430\u0434\u043b\u044e\u0434\u0438\u043d\u043e\u044e",
+        "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435",
     ),
-    ("In solitude, what everyone carries within themselves grows", "Friedrich Nietzsche"),
-    ("There are no facts, only interpretations", "Friedrich Nietzsche"),
+    ("\u041d\u0430 \u0441\u0430\u043c\u043e\u0442\u0456 \u0432\u0438\u0440\u043e\u0441\u0442\u0430\u0454 \u0442\u0435, \u0449\u043e \u043a\u043e\u0436\u0435\u043d \u0443 \u0441\u043e\u0431\u0456 \u043d\u043e\u0441\u0438\u0442\u044c", "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435"),
+    ("\u041d\u0435\u043c\u0430\u0454 \u0444\u0430\u043a\u0442\u0456\u0432, \u0454 \u043b\u0438\u0448\u0435 \u0456\u043d\u0442\u0435\u0440\u043f\u0440\u0435\u0442\u0430\u0446\u0456\u0457", "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435"),
     (
-        "The more abstract the truth, the more appealing it is to the mind",
-        "Friedrich Nietzsche",
+        "\u0429\u043e \u0430\u0431\u0441\u0442\u0440\u0430\u043a\u0442\u043d\u0456\u0448\u0430 \u0456\u0441\u0442\u0438\u043d\u0430, \u0442\u043e \u043f\u0440\u0438\u0432\u0430\u0431\u043b\u0438\u0432\u0456\u0448\u0430 \u0432\u043e\u043d\u0430 \u0434\u043b\u044f \u0440\u043e\u0437\u0443\u043c\u0443",
+        "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435",
     ),
     (
-        "I love those who do not know how to live except by going under",
-        "Friedrich Nietzsche",
+        "\u042f \u043b\u044e\u0431\u043b\u044e \u0442\u0438\u0445, \u0445\u0442\u043e \u043d\u0435 \u0437\u043d\u0430\u0454, \u044f\u043a \u0436\u0438\u0442\u0438 \u0456\u043d\u0430\u043a\u0448\u0435, \u043d\u0456\u0436 \u0433\u0438\u043d\u0443\u0447\u0438",
+        "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435",
     ),
-    ("Anyone who does not have two-thirds of the day for himself is a slave", "Friedrich Nietzsche"),
+    ("\u0423 \u043a\u043e\u0433\u043e \u043d\u0435\u043c\u0430\u0454 \u0434\u0432\u043e\u0445 \u0442\u0440\u0435\u0442\u0438\u043d \u0434\u043d\u044f \u0434\u043b\u044f \u0441\u0435\u0431\u0435, \u0442\u043e\u0439 \u0440\u0430\u0431", "\u0424\u0440\u0456\u0434\u0440\u0456\u0445 \u041d\u0456\u0446\u0448\u0435"),
 ]
 
 QUOTES_SCHOPENHAUER = [
+    ("\u0416\u0438\u0442\u0442\u044f \u043f\u043e\u0434\u0456\u0431\u043d\u0435 \u0434\u043e \u043c\u0430\u044f\u0442\u043d\u0438\u043a\u0430, \u0449\u043e \u0445\u0438\u0442\u0430\u0454\u0442\u044c\u0441\u044f \u043c\u0456\u0436 \u0441\u0442\u0440\u0430\u0436\u0434\u0430\u043d\u043d\u044f\u043c \u0456 \u043d\u0443\u0434\u044c\u0433\u043e\u044e", "\u0410\u0440\u0442\u0443\u0440 \u0428\u043e\u043f\u0435\u043d\u0433\u0430\u0443\u0435\u0440"),
     (
-        "Life swings like a pendulum between suffering and boredom",
-        "Arthur Schopenhauer",
+        "\u0422\u0430\u043b\u0430\u043d\u0442 \u0432\u043b\u0443\u0447\u0430\u0454 \u0432 \u0446\u0456\u043b\u044c, \u0443 \u044f\u043a\u0443 \u043d\u0456\u0445\u0442\u043e \u043d\u0435 \u043c\u043e\u0436\u0435 \u0432\u043b\u0443\u0447\u0438\u0442\u0438; "
+        "\u0433\u0435\u043d\u0456\u0439 \u0432\u043b\u0443\u0447\u0430\u0454 \u0432 \u0446\u0456\u043b\u044c, \u044f\u043a\u0443 \u043d\u0456\u0445\u0442\u043e \u043d\u0435 \u0431\u0430\u0447\u0438\u0442\u044c",
+        "\u0410\u0440\u0442\u0443\u0440 \u0428\u043e\u043f\u0435\u043d\u0433\u0430\u0443\u0435\u0440",
     ),
+    ("\u041a\u043e\u0436\u0435\u043d \u043f\u0440\u0438\u0439\u043c\u0430\u0454 \u043c\u0435\u0436\u0443 \u0441\u0432\u043e\u0433\u043e \u043a\u0440\u0443\u0433\u043e\u0437\u043e\u0440\u0443 \u0437\u0430 \u043c\u0435\u0436\u0443 \u0441\u0432\u0456\u0442\u0443", "\u0410\u0440\u0442\u0443\u0440 \u0428\u043e\u043f\u0435\u043d\u0433\u0430\u0443\u0435\u0440"),
+    ("\u0417\u0434\u043e\u0440\u043e\u0432\u0438\u0439 \u0436\u0435\u0431\u0440\u0430\u043a \u0449\u0430\u0441\u043b\u0438\u0432\u0456\u0448\u0438\u0439 \u0437\u0430 \u0445\u0432\u043e\u0440\u043e\u0433\u043e \u043a\u043e\u0440\u043e\u043b\u044f", "\u0410\u0440\u0442\u0443\u0440 \u0428\u043e\u043f\u0435\u043d\u0433\u0430\u0443\u0435\u0440"),
+    ("\u0421\u0442\u0430\u043d \u0449\u0430\u0441\u0442\u044f \u2014 \u0446\u0435 \u0441\u0442\u0430\u043d \u0432\u0456\u0434\u0441\u0443\u0442\u043d\u043e\u0441\u0442\u0456 \u0441\u0442\u0440\u0430\u0436\u0434\u0430\u043d\u043d\u044f", "\u0410\u0440\u0442\u0443\u0440 \u0428\u043e\u043f\u0435\u043d\u0433\u0430\u0443\u0435\u0440"),
     (
-        "Talent hits a target no one else can hit; "
-        "genius hits a target no one else can see",
-        "Arthur Schopenhauer",
-    ),
-    (
-        "Every person takes the limits of their own field of vision for the limits of the world",
-        "Arthur Schopenhauer",
-    ),
-    ("A healthy beggar is happier than a sick king", "Arthur Schopenhauer"),
-    (
-        "Happiness is the absence of suffering",
-        "Arthur Schopenhauer",
-    ),
-    (
-        "Solitude gives the intellectual person a double advantage: "
-        "being with oneself and not being with others",
-        "Arthur Schopenhauer",
+        "\u0421\u0430\u043c\u043e\u0442\u043d\u0456\u0441\u0442\u044c \u0434\u0430\u0454 \u0456\u043d\u0442\u0435\u043b\u0435\u043a\u0442\u0443\u0430\u043b\u044c\u043d\u0456\u0439 \u043b\u044e\u0434\u0438\u043d\u0456 \u043f\u043e\u0434\u0432\u0456\u0439\u043d\u0443 \u043f\u0435\u0440\u0435\u0432\u0430\u0433\u0443: "
+        "\u0431\u0443\u0442\u0438 \u0437 \u0441\u0430\u043c\u0438\u043c \u0441\u043e\u0431\u043e\u044e \u0456 \u043d\u0435 \u0431\u0443\u0442\u0438 \u0437 \u0456\u043d\u0448\u0438\u043c\u0438",
+        "\u0410\u0440\u0442\u0443\u0440 \u0428\u043e\u043f\u0435\u043d\u0433\u0430\u0443\u0435\u0440",
     ),
 ]
 
 QUOTES_KANT = [
-    ("He who is cruel to animals becomes hard also in his dealings with men", "Immanuel Kant"),
-    ("Out of the crooked timber of humanity, no straight thing was ever made", "Immanuel Kant"),
-    ("Experience without theory is blind, but theory without experience is mere intellectual play", "Immanuel Kant"),
+    ("\u0422\u043e\u0439, \u0445\u0442\u043e \u0436\u043e\u0440\u0441\u0442\u043e\u043a\u0438\u0439 \u0434\u043e \u0442\u0432\u0430\u0440\u0438\u043d, \u0441\u0442\u0430\u0454 \u0447\u0435\u0440\u0441\u0442\u0432\u0438\u043c \u0456 \u0432 \u0441\u0442\u043e\u0441\u0443\u043d\u043a\u0430\u0445 \u0437 \u043b\u044e\u0434\u044c\u043c\u0438", "\u0406\u043c\u043c\u0430\u043d\u0443\u0457\u043b \u041a\u0430\u043d\u0442"),
+    ("\u0417 \u043a\u0440\u0438\u0432\u043e\u0433\u043e \u0434\u0435\u0440\u0435\u0432\u0430 \u043b\u044e\u0434\u0441\u0442\u0432\u0430 \u043d\u0435 \u043c\u043e\u0436\u043d\u0430 \u0437\u0440\u043e\u0431\u0438\u0442\u0438 \u043d\u0456\u0447\u043e\u0433\u043e \u043f\u0440\u044f\u043c\u043e\u0433\u043e", "\u0406\u043c\u043c\u0430\u043d\u0443\u0457\u043b \u041a\u0430\u043d\u0442"),
+    ("\u0414\u043e\u0441\u0432\u0456\u0434 \u0431\u0435\u0437 \u0442\u0435\u043e\u0440\u0456\u0457 \u0441\u043b\u0456\u043f\u0438\u0439, \u0430 \u0442\u0435\u043e\u0440\u0456\u044f \u0431\u0435\u0437 \u0434\u043e\u0441\u0432\u0456\u0434\u0443 \u2014 \u043b\u0438\u0448\u0435 \u0456\u043d\u0442\u0435\u043b\u0435\u043a\u0442\u0443\u0430\u043b\u044c\u043d\u0430 \u0433\u0440\u0430", "\u0406\u043c\u043c\u0430\u043d\u0443\u0457\u043b \u041a\u0430\u043d\u0442"),
 ]
 
 QUOTES_SENECA = [
-    ("We suffer more often in imagination than in reality", "Seneca"),
-    ("Luck is what happens when preparation meets opportunity", "Seneca"),
-    ("The whole future lies in uncertainty — live immediately", "Seneca"),
+    ("\u041c\u0438 \u0441\u0442\u0440\u0430\u0436\u0434\u0430\u0454\u043c\u043e \u0447\u0430\u0441\u0442\u0456\u0448\u0435 \u0432 \u0443\u044f\u0432\u0456, \u043d\u0456\u0436 \u0443 \u0440\u0435\u0430\u043b\u044c\u043d\u043e\u0441\u0442\u0456", "\u0421\u0435\u043d\u0435\u043a\u0430"),
+    ("\u0423\u0434\u0430\u0447\u0430 \u2014 \u0446\u0435 \u043a\u043e\u043b\u0438 \u043f\u0456\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0430 \u0437\u0443\u0441\u0442\u0440\u0456\u0447\u0430\u0454\u0442\u044c\u0441\u044f \u0437 \u043c\u043e\u0436\u043b\u0438\u0432\u0456\u0441\u0442\u044e", "\u0421\u0435\u043d\u0435\u043a\u0430"),
+    ("\u0412\u0441\u0435 \u043c\u0430\u0439\u0431\u0443\u0442\u043d\u0454 \u043b\u0435\u0436\u0438\u0442\u044c \u0443 \u043d\u0435\u0432\u0456\u0434\u043e\u043c\u043e\u0441\u0442\u0456 \u2014 \u0436\u0438\u0432\u0438 \u0437\u0430\u0440\u0430\u0437", "\u0421\u0435\u043d\u0435\u043a\u0430"),
 ]
 
 QUOTES_AURELIUS = [
-    ("You have power over your mind, not outside events. Realize this, and you will find strength", "Marcus Aurelius"),
-    ("The happiness of your life depends upon the quality of your thoughts", "Marcus Aurelius"),
-    ("Waste no more time arguing about what a good man should be. Be one", "Marcus Aurelius"),
-    ("The soul becomes dyed with the color of its thoughts", "Marcus Aurelius"),
+    ("\u0422\u0438 \u0432\u043b\u0430\u0434\u043d\u0438\u0439 \u043d\u0430\u0434 \u0441\u0432\u043e\u0457\u043c \u0440\u043e\u0437\u0443\u043c\u043e\u043c, \u0430 \u043d\u0435 \u043d\u0430\u0434 \u0437\u043e\u0432\u043d\u0456\u0448\u043d\u0456\u043c\u0438 \u043f\u043e\u0434\u0456\u044f\u043c\u0438. \u0417\u0440\u043e\u0437\u0443\u043c\u0456\u0439 \u0446\u0435 \u2014 \u0456 \u0437\u043d\u0430\u0439\u0434\u0435\u0448 \u0441\u0438\u043b\u0443", "\u041c\u0430\u0440\u043a \u0410\u0432\u0440\u0435\u043b\u0456\u0439"),
+    ("\u0429\u0430\u0441\u0442\u044f \u0442\u0432\u043e\u0433\u043e \u0436\u0438\u0442\u0442\u044f \u0437\u0430\u043b\u0435\u0436\u0438\u0442\u044c \u0432\u0456\u0434 \u044f\u043a\u043e\u0441\u0442\u0456 \u0442\u0432\u043e\u0457\u0445 \u0434\u0443\u043c\u043e\u043a", "\u041c\u0430\u0440\u043a \u0410\u0432\u0440\u0435\u043b\u0456\u0439"),
+    ("\u041d\u0435 \u0432\u0438\u0442\u0440\u0430\u0447\u0430\u0439 \u0447\u0430\u0441 \u043d\u0430 \u0441\u0443\u043f\u0435\u0440\u0435\u0447\u043a\u0438 \u043f\u0440\u043e \u0442\u0435, \u044f\u043a\u0438\u043c \u043c\u0430\u0454 \u0431\u0443\u0442\u0438 \u0445\u043e\u0440\u043e\u0448\u0438\u0439 \u0447\u043e\u043b\u043e\u0432\u0456\u043a. \u0411\u0443\u0434\u044c \u043d\u0438\u043c", "\u041c\u0430\u0440\u043a \u0410\u0432\u0440\u0435\u043b\u0456\u0439"),
+    ("\u0414\u0443\u0448\u0430 \u0437\u0430\u0431\u0430\u0440\u0432\u043b\u044e\u0454\u0442\u044c\u0441\u044f \u0443 \u043a\u043e\u043b\u0456\u0440 \u0441\u0432\u043e\u0457\u0445 \u0434\u0443\u043c\u043e\u043a", "\u041c\u0430\u0440\u043a \u0410\u0432\u0440\u0435\u043b\u0456\u0439"),
 ]
 
 ALL_QUOTES = QUOTES_NIETZSCHE + QUOTES_SCHOPENHAUER + QUOTES_KANT + QUOTES_SENECA + QUOTES_AURELIUS
 
-# Category button labels
-BTN_NIETZSCHE = "Nietzsche"
-BTN_SCHOPENHAUER = "Schopenhauer"
-BTN_KANT = "Kant"
-BTN_SENECA = "Seneca"
-BTN_AURELIUS = "Aurelius"
-BTN_RANDOM = "Random"
-
-CATEGORY_MAP = {
-    BTN_NIETZSCHE: "nietzsche",
-    BTN_SCHOPENHAUER: "schopenhauer",
-    BTN_KANT: "kant",
-    BTN_SENECA: "seneca",
-    BTN_AURELIUS: "aurelius",
-    BTN_RANDOM: "random",
+CATEGORY_LABELS = {
+    "nietzsche": "\u041d\u0456\u0446\u0448\u0435",
+    "schopenhauer": "\u0428\u043e\u043f\u0435\u043d\u0433\u0430\u0443\u0435\u0440",
+    "kant": "\u041a\u0430\u043d\u0442",
+    "seneca": "\u0421\u0435\u043d\u0435\u043a\u0430",
+    "aurelius": "\u041c\u0430\u0440\u043a \u0410\u0432\u0440\u0435\u043b\u0456\u0439",
+    "random": "\u0412\u0438\u043f\u0430\u0434\u043a\u043e\u0432\u0430",
 }
+
+POOLS = {
+    "nietzsche": QUOTES_NIETZSCHE,
+    "schopenhauer": QUOTES_SCHOPENHAUER,
+    "kant": QUOTES_KANT,
+    "seneca": QUOTES_SENECA,
+    "aurelius": QUOTES_AURELIUS,
+}
+
+DAILY_HOURS = [7, 8, 9, 10, 12, 14, 18, 20, 22]
 
 
 # --- persistence ---
@@ -143,8 +134,16 @@ def save_data(data: dict) -> None:
 def get_user(data: dict, user_id: int) -> dict:
     uid = str(user_id)
     if uid not in data:
-        data[uid] = {"daily_date": None, "daily_quote": None}
-    return data[uid]
+        data[uid] = {
+            "daily_date": None,
+            "daily_quote": None,
+            "auto_enabled": False,
+            "auto_hour": 9,
+        }
+    user = data[uid]
+    user.setdefault("auto_enabled", False)
+    user.setdefault("auto_hour", 9)
+    return user
 
 
 # --- image generation ---
@@ -229,20 +228,44 @@ def generate_quote_image(text: str, author: str) -> bytes:
 
 # --- keyboards ---
 
-BOTTOM_KEYBOARD = ReplyKeyboardMarkup(
-    [
-        [KeyboardButton(BTN_NIETZSCHE), KeyboardButton(BTN_SCHOPENHAUER), KeyboardButton(BTN_KANT)],
-        [KeyboardButton(BTN_SENECA), KeyboardButton(BTN_AURELIUS), KeyboardButton(BTN_RANDOM)],
-    ],
-    resize_keyboard=True,
-)
+def philosopher_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("\u041d\u0456\u0446\u0448\u0435", callback_data="cat_nietzsche"),
+            InlineKeyboardButton("\u0428\u043e\u043f\u0435\u043d\u0433\u0430\u0443\u0435\u0440", callback_data="cat_schopenhauer"),
+        ],
+        [
+            InlineKeyboardButton("\u041a\u0430\u043d\u0442", callback_data="cat_kant"),
+            InlineKeyboardButton("\u0421\u0435\u043d\u0435\u043a\u0430", callback_data="cat_seneca"),
+        ],
+        [
+            InlineKeyboardButton("\u041c\u0430\u0440\u043a \u0410\u0432\u0440\u0435\u043b\u0456\u0439", callback_data="cat_aurelius"),
+            InlineKeyboardButton("\ud83c\udfb2 \u0412\u0438\u043f\u0430\u0434\u043a\u043e\u0432\u0430", callback_data="cat_random"),
+        ],
+    ])
 
 
 def quote_keyboard(quote_index: int, category: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("\U0001f4e4 Share", callback_data=f"share_{quote_index}"),
-            InlineKeyboardButton("Next quote!", callback_data=f"next_{category}"),
+            InlineKeyboardButton("\U0001f4e4 \u041f\u043e\u0434\u0456\u043b\u0438\u0442\u0438\u0441\u044c", callback_data=f"share_{quote_index}"),
+            InlineKeyboardButton("\u0429\u0435 \u0446\u0438\u0442\u0430\u0442\u0443!", callback_data=f"next_{category}"),
+        ],
+    ])
+
+
+def auto_settings_keyboard(user: dict) -> InlineKeyboardMarkup:
+    enabled = user.get("auto_enabled", False)
+    hour = user.get("auto_hour", 9)
+    status_text = "\u2705 \u0423\u0432\u0456\u043c\u043a." if enabled else "\u274c \u0412\u0438\u043c\u043a."
+    toggle_data = "auto_off" if enabled else "auto_on"
+
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(f"\u0429\u043e\u0434\u0435\u043d\u043d\u0430 \u0446\u0438\u0442\u0430\u0442\u0430: {status_text}", callback_data=toggle_data)],
+        [
+            InlineKeyboardButton("\u25c0", callback_data="hour_dec"),
+            InlineKeyboardButton(f"\u0427\u0430\u0441: {hour:02d}:00", callback_data="hour_noop"),
+            InlineKeyboardButton("\u25b6", callback_data="hour_inc"),
         ],
     ])
 
@@ -258,14 +281,7 @@ def format_quote(text: str, author: str) -> str:
 
 def pick_quote(category: str) -> tuple[int, str, str]:
     global _last_quote_idx
-    pools = {
-        "nietzsche": QUOTES_NIETZSCHE,
-        "schopenhauer": QUOTES_SCHOPENHAUER,
-        "kant": QUOTES_KANT,
-        "seneca": QUOTES_SENECA,
-        "aurelius": QUOTES_AURELIUS,
-    }
-    pool = pools.get(category, ALL_QUOTES)
+    pool = POOLS.get(category, ALL_QUOTES)
     while True:
         q = random.choice(pool)
         idx = ALL_QUOTES.index(q)
@@ -275,27 +291,64 @@ def pick_quote(category: str) -> tuple[int, str, str]:
     return idx, q[0], q[1]
 
 
+# --- scheduled daily quote ---
+
+async def send_scheduled_quote(context: ContextTypes.DEFAULT_TYPE) -> None:
+    chat_id = context.job.chat_id
+    idx, text, author = pick_quote("random")
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=f"\u2728 \u0426\u0438\u0442\u0430\u0442\u0430 \u0434\u043d\u044f:\n\n{format_quote(text, author)}",
+        reply_markup=quote_keyboard(idx, "random"),
+    )
+
+
+def schedule_user_job(app: Application, chat_id: int, hour: int) -> None:
+    job_name = f"daily_{chat_id}"
+    # remove old job if exists
+    for job in app.job_queue.get_jobs_by_name(job_name):
+        job.schedule_removal()
+    # UTC time for the given hour (assuming user is UTC+2 Kyiv)
+    utc_hour = (hour - 2) % 24
+    app.job_queue.run_daily(
+        send_scheduled_quote,
+        time=time(hour=utc_hour, minute=0, tzinfo=timezone.utc),
+        chat_id=chat_id,
+        name=job_name,
+    )
+
+
+def remove_user_job(app: Application, chat_id: int) -> None:
+    job_name = f"daily_{chat_id}"
+    for job in app.job_queue.get_jobs_by_name(job_name):
+        job.schedule_removal()
+
+
 # --- handlers ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
-        "Hello! I'm a bot with philosophical quotes by Nietzsche and Schopenhauer.\n\n"
-        "Pick a category below or press /quote for a random quote.",
-        reply_markup=BOTTOM_KEYBOARD,
+        "\u041f\u0440\u0438\u0432\u0456\u0442! \u042f \u0431\u043e\u0442 \u0437 \u0444\u0456\u043b\u043e\u0441\u043e\u0444\u0441\u044c\u043a\u0438\u043c\u0438 \u0446\u0438\u0442\u0430\u0442\u0430\u043c\u0438.\n\n"
+        "\ud83d\udcdc /quote \u2014 \u043e\u0442\u0440\u0438\u043c\u0430\u0442\u0438 \u0446\u0438\u0442\u0430\u0442\u0443\n"
+        "\ud83d\udcc5 /daily \u2014 \u0446\u0438\u0442\u0430\u0442\u0430 \u0434\u043d\u044f\n"
+        "\u2699\ufe0f /settings \u2014 \u0449\u043e\u0434\u0435\u043d\u043d\u0430 \u0440\u043e\u0437\u0441\u0438\u043b\u043a\u0430",
     )
 
 
-async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def quote_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
-        "\n" * 50 + "Chat cleared! Pick a category below.",
-        reply_markup=BOTTOM_KEYBOARD,
+        "\u041e\u0431\u0435\u0440\u0438 \u0444\u0456\u043b\u043e\u0441\u043e\u0444\u0430:",
+        reply_markup=philosopher_keyboard(),
     )
 
 
-async def quote(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    idx, text, author = pick_quote("random")
-    await update.message.reply_text(
-        format_quote(text, author), reply_markup=quote_keyboard(idx, "random")
+async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    cat = query.data.replace("cat_", "")
+    idx, text, author = pick_quote(cat)
+    await query.message.reply_text(
+        format_quote(text, author), reply_markup=quote_keyboard(idx, cat)
     )
 
 
@@ -308,8 +361,8 @@ async def daily(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         idx = user["daily_quote"]
         text, author = ALL_QUOTES[idx]
         await update.message.reply_text(
-            f"Your quote for today:\n\n{format_quote(text, author)}\n\n"
-            "(Next one tomorrow!)",
+            f"\u0422\u0432\u043e\u044f \u0446\u0438\u0442\u0430\u0442\u0430 \u043d\u0430 \u0441\u044c\u043e\u0433\u043e\u0434\u043d\u0456:\n\n{format_quote(text, author)}\n\n"
+            "(\u041d\u0430\u0441\u0442\u0443\u043f\u043d\u0430 \u0431\u0443\u0434\u0435 \u0437\u0430\u0432\u0442\u0440\u0430!)",
             reply_markup=quote_keyboard(idx, "random"),
         )
         return
@@ -321,19 +374,68 @@ async def daily(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     text, author = ALL_QUOTES[idx]
     await update.message.reply_text(
-        f"Quote of the day:\n\n{format_quote(text, author)}",
+        f"\u0426\u0438\u0442\u0430\u0442\u0430 \u0434\u043d\u044f:\n\n{format_quote(text, author)}",
         reply_markup=quote_keyboard(idx, "random"),
     )
 
 
-async def category_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    cat = CATEGORY_MAP.get(update.message.text)
-    if not cat:
-        return
-    idx, text, author = pick_quote(cat)
+async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
-        format_quote(text, author), reply_markup=quote_keyboard(idx, cat)
+        "\n" * 50 + "\u0427\u0430\u0442 \u043e\u0447\u0438\u0449\u0435\u043d\u043e!",
     )
+
+
+async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    user = get_user(data, update.effective_user.id)
+    save_data(data)
+    await update.message.reply_text(
+        "\u2699\ufe0f \u041d\u0430\u043b\u0430\u0448\u0442\u0443\u0432\u0430\u043d\u043d\u044f \u0449\u043e\u0434\u0435\u043d\u043d\u043e\u0457 \u0446\u0438\u0442\u0430\u0442\u0438:\n"
+        "(\u0447\u0430\u0441 \u0437\u0430 \u043a\u0438\u0457\u0432\u0441\u044c\u043a\u0438\u043c \u0447\u0430\u0441\u043e\u043c)",
+        reply_markup=auto_settings_keyboard(user),
+    )
+
+
+async def auto_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    data = load_data()
+    user = get_user(data, query.from_user.id)
+
+    if query.data == "auto_on":
+        user["auto_enabled"] = True
+        schedule_user_job(context.application, query.message.chat_id, user["auto_hour"])
+    else:
+        user["auto_enabled"] = False
+        remove_user_job(context.application, query.message.chat_id)
+
+    save_data(data)
+    await query.message.edit_reply_markup(reply_markup=auto_settings_keyboard(user))
+
+
+async def hour_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "hour_noop":
+        return
+
+    data = load_data()
+    user = get_user(data, query.from_user.id)
+    h = user.get("auto_hour", 9)
+
+    if query.data == "hour_inc":
+        h = (h + 1) % 24
+    else:
+        h = (h - 1) % 24
+
+    user["auto_hour"] = h
+    save_data(data)
+
+    if user.get("auto_enabled"):
+        schedule_user_job(context.application, query.message.chat_id, h)
+
+    await query.message.edit_reply_markup(reply_markup=auto_settings_keyboard(user))
 
 
 async def next_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -358,11 +460,23 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
 
 
-async def post_init(application) -> None:
+async def post_init(application: Application) -> None:
     await application.bot.set_my_commands([
-        BotCommand("start", "Start the bot"),
-        BotCommand("clear", "Clear the chat"),
+        BotCommand("start", "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0438 \u0431\u043e\u0442\u0430"),
+        BotCommand("quote", "\u041e\u0442\u0440\u0438\u043c\u0430\u0442\u0438 \u0446\u0438\u0442\u0430\u0442\u0443"),
+        BotCommand("daily", "\u0426\u0438\u0442\u0430\u0442\u0430 \u0434\u043d\u044f"),
+        BotCommand("settings", "\u041d\u0430\u043b\u0430\u0448\u0442\u0443\u0432\u0430\u043d\u043d\u044f"),
+        BotCommand("clear", "\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u0438 \u0447\u0430\u0442"),
     ])
+
+    # restore scheduled jobs for users with auto_enabled
+    data = load_data()
+    for uid, udata in data.items():
+        if udata.get("auto_enabled"):
+            try:
+                schedule_user_job(application, int(uid), udata.get("auto_hour", 9))
+            except Exception:
+                pass
 
 
 def run_bot() -> None:
@@ -372,16 +486,15 @@ def run_bot() -> None:
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("clear", clear))
-    app.add_handler(CommandHandler("quote", quote))
+    app.add_handler(CommandHandler("quote", quote_cmd))
     app.add_handler(CommandHandler("daily", daily))
+    app.add_handler(CommandHandler("settings", settings_cmd))
 
-    app.add_handler(MessageHandler(
-        filters.TEXT & filters.Regex(f"^({BTN_NIETZSCHE}|{BTN_SCHOPENHAUER}|{BTN_KANT}|{BTN_SENECA}|{BTN_AURELIUS}|{BTN_RANDOM})$"),
-        category_text,
-    ))
-
+    app.add_handler(CallbackQueryHandler(category_callback, pattern=r"^cat_"))
     app.add_handler(CallbackQueryHandler(next_callback, pattern=r"^next_"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern=r"^share_"))
+    app.add_handler(CallbackQueryHandler(auto_toggle_callback, pattern=r"^auto_"))
+    app.add_handler(CallbackQueryHandler(hour_callback, pattern=r"^hour_"))
 
     print("Telegram bot started...")
     app.run_polling()
