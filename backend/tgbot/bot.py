@@ -233,11 +233,26 @@ def generate_quote_image(text: str, author: str) -> bytes:
 # --- keyboards ---
 
 BTN_RANDOM = "Random Quote"
+BTN_CHOOSE = "Choose Author"
 
 BOTTOM_KEYBOARD = ReplyKeyboardMarkup(
-    [[KeyboardButton(BTN_RANDOM)]],
+    [[KeyboardButton(BTN_RANDOM), KeyboardButton(BTN_CHOOSE)]],
     resize_keyboard=True,
 )
+
+
+def philosopher_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("\u041d\u0456\u0446\u0448\u0435", callback_data="cat_nietzsche"),
+            InlineKeyboardButton("\u0428\u043e\u043f\u0435\u043d\u0433\u0430\u0443\u0435\u0440", callback_data="cat_schopenhauer"),
+        ],
+        [
+            InlineKeyboardButton("\u041a\u0430\u043d\u0442", callback_data="cat_kant"),
+            InlineKeyboardButton("\u0421\u0435\u043d\u0435\u043a\u0430", callback_data="cat_seneca"),
+            InlineKeyboardButton("\u041c\u0430\u0440\u043a \u0410\u0432\u0440\u0435\u043b\u0456\u0439", callback_data="cat_aurelius"),
+        ],
+    ])
 
 
 def quote_keyboard(quote_index: int, category: str) -> InlineKeyboardMarkup:
@@ -344,6 +359,23 @@ async def random_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     idx, text, author = pick_quote("random", context)
     await update.message.reply_text(
         format_quote(text, author), reply_markup=quote_keyboard(idx, "random")
+    )
+
+
+async def choose_author(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text(
+        "\u041e\u0431\u0435\u0440\u0438 \u0444\u0456\u043b\u043e\u0441\u043e\u0444\u0430:",
+        reply_markup=philosopher_keyboard(),
+    )
+
+
+async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    cat = query.data.replace("cat_", "")
+    idx, text, author = pick_quote(cat, context)
+    await query.message.reply_text(
+        format_quote(text, author), reply_markup=quote_keyboard(idx, cat)
     )
 
 
@@ -456,13 +488,7 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def post_init(application: Application) -> None:
-    await application.bot.set_my_commands([
-        BotCommand("start", "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0438 \u0431\u043e\u0442\u0430"),
-        BotCommand("quote", "\u041e\u0442\u0440\u0438\u043c\u0430\u0442\u0438 \u0446\u0438\u0442\u0430\u0442\u0443"),
-        BotCommand("daily", "\u0426\u0438\u0442\u0430\u0442\u0430 \u0434\u043d\u044f"),
-        BotCommand("settings", "\u041d\u0430\u043b\u0430\u0448\u0442\u0443\u0432\u0430\u043d\u043d\u044f"),
-        BotCommand("clear", "\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u0438 \u0447\u0430\u0442"),
-    ])
+    await application.bot.delete_my_commands()
 
     # restore scheduled jobs for users with auto_enabled
     data = load_data()
@@ -489,6 +515,11 @@ def run_bot() -> None:
         filters.TEXT & filters.Regex(f"^{BTN_RANDOM}$"),
         random_button,
     ))
+    app.add_handler(MessageHandler(
+        filters.TEXT & filters.Regex(f"^{BTN_CHOOSE}$"),
+        choose_author,
+    ))
+    app.add_handler(CallbackQueryHandler(category_callback, pattern=r"^cat_"))
     app.add_handler(CallbackQueryHandler(next_callback, pattern=r"^next_"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern=r"^share_"))
     app.add_handler(CallbackQueryHandler(auto_toggle_callback, pattern=r"^auto_"))
