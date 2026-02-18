@@ -497,7 +497,7 @@ def run_bot() -> None:
     app.add_handler(CallbackQueryHandler(hour_callback, pattern=r"^hour_"))
 
     print("Telegram bot started...")
-    app.run_polling()
+    app.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
