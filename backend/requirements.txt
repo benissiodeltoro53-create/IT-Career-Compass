@@ -3,3 +3,5 @@ uvicorn>=0.34
 httpx>=0.28
 python-dotenv>=1.0
 pydantic>=2.11
+python-telegram-bot>=21.10
+Pillow>=11.0
