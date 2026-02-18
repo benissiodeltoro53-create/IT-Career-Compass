@@ -221,18 +221,26 @@ def quote_keyboard(quote_index: int, category: str) -> InlineKeyboardMarkup:
 
 # --- helpers ---
 
+_last_quote_idx: int | None = None
+
+
 def format_quote(text: str, author: str) -> str:
     return f'\u201c{text}\u201d\n\n\u2014 {author}'
 
 
 def pick_quote(category: str) -> tuple[int, str, str]:
-    if category == "nietzsche":
-        q = random.choice(QUOTES_NIETZSCHE)
-    elif category == "schopenhauer":
-        q = random.choice(QUOTES_SCHOPENHAUER)
-    else:
-        q = random.choice(ALL_QUOTES)
-    idx = ALL_QUOTES.index(q)
+    global _last_quote_idx
+    pool = (
+        QUOTES_NIETZSCHE if category == "nietzsche"
+        else QUOTES_SCHOPENHAUER if category == "schopenhauer"
+        else ALL_QUOTES
+    )
+    while True:
+        q = random.choice(pool)
+        idx = ALL_QUOTES.index(q)
+        if idx != _last_quote_idx or len(pool) == 1:
+            break
+    _last_quote_idx = idx
     return idx, q[0], q[1]
 
 
