@@ -268,22 +268,24 @@ def auto_settings_keyboard(user: dict) -> InlineKeyboardMarkup:
 
 # --- helpers ---
 
-_last_quote_idx: int | None = None
-
-
 def format_quote(text: str, author: str) -> str:
     return f'\u201c{text}\u201d\n\n\u2014 {author}'
 
 
-def pick_quote(category: str) -> tuple[int, str, str]:
-    global _last_quote_idx
+def pick_quote(category: str, context: ContextTypes.DEFAULT_TYPE | None = None) -> tuple[int, str, str]:
+    last_idx = None
+    if context and context.user_data:
+        last_idx = context.user_data.get("last_quote_idx")
+
     pool = POOLS.get(category, ALL_QUOTES)
     while True:
         q = random.choice(pool)
         idx = ALL_QUOTES.index(q)
-        if idx != _last_quote_idx or len(pool) == 1:
+        if idx != last_idx or len(pool) == 1:
             break
-    _last_quote_idx = idx
+
+    if context is not None:
+        context.user_data["last_quote_idx"] = idx
     return idx, q[0], q[1]
 
 
@@ -342,7 +344,7 @@ async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     query = update.callback_query
     await query.answer()
     cat = query.data.replace("cat_", "")
-    idx, text, author = pick_quote(cat)
+    idx, text, author = pick_quote(cat, context)
     await query.message.reply_text(
         format_quote(text, author), reply_markup=quote_keyboard(idx, cat)
     )
@@ -438,7 +440,7 @@ async def next_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     query = update.callback_query
     await query.answer()
     cat = query.data.replace("next_", "")
-    idx, text, author = pick_quote(cat)
+    idx, text, author = pick_quote(cat, context)
     await query.message.reply_text(
         format_quote(text, author), reply_markup=quote_keyboard(idx, cat)
     )
