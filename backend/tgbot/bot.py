@@ -87,16 +87,41 @@ QUOTES_SCHOPENHAUER = [
     ),
 ]
 
-ALL_QUOTES = QUOTES_NIETZSCHE + QUOTES_SCHOPENHAUER
+QUOTES_KANT = [
+    ("He who is cruel to animals becomes hard also in his dealings with men", "Immanuel Kant"),
+    ("Out of the crooked timber of humanity, no straight thing was ever made", "Immanuel Kant"),
+    ("Experience without theory is blind, but theory without experience is mere intellectual play", "Immanuel Kant"),
+]
+
+QUOTES_SENECA = [
+    ("We suffer more often in imagination than in reality", "Seneca"),
+    ("Luck is what happens when preparation meets opportunity", "Seneca"),
+    ("The whole future lies in uncertainty — live immediately", "Seneca"),
+]
+
+QUOTES_AURELIUS = [
+    ("You have power over your mind, not outside events. Realize this, and you will find strength", "Marcus Aurelius"),
+    ("The happiness of your life depends upon the quality of your thoughts", "Marcus Aurelius"),
+    ("Waste no more time arguing about what a good man should be. Be one", "Marcus Aurelius"),
+    ("The soul becomes dyed with the color of its thoughts", "Marcus Aurelius"),
+]
+
+ALL_QUOTES = QUOTES_NIETZSCHE + QUOTES_SCHOPENHAUER + QUOTES_KANT + QUOTES_SENECA + QUOTES_AURELIUS
 
 # Category button labels
 BTN_NIETZSCHE = "Nietzsche"
 BTN_SCHOPENHAUER = "Schopenhauer"
+BTN_KANT = "Kant"
+BTN_SENECA = "Seneca"
+BTN_AURELIUS = "Aurelius"
 BTN_RANDOM = "Random"
 
 CATEGORY_MAP = {
     BTN_NIETZSCHE: "nietzsche",
     BTN_SCHOPENHAUER: "schopenhauer",
+    BTN_KANT: "kant",
+    BTN_SENECA: "seneca",
+    BTN_AURELIUS: "aurelius",
     BTN_RANDOM: "random",
 }
 
@@ -205,7 +230,10 @@ def generate_quote_image(text: str, author: str) -> bytes:
 # --- keyboards ---
 
 BOTTOM_KEYBOARD = ReplyKeyboardMarkup(
-    [[KeyboardButton(BTN_NIETZSCHE), KeyboardButton(BTN_SCHOPENHAUER), KeyboardButton(BTN_RANDOM)]],
+    [
+        [KeyboardButton(BTN_NIETZSCHE), KeyboardButton(BTN_SCHOPENHAUER), KeyboardButton(BTN_KANT)],
+        [KeyboardButton(BTN_SENECA), KeyboardButton(BTN_AURELIUS), KeyboardButton(BTN_RANDOM)],
+    ],
     resize_keyboard=True,
 )
 
@@ -230,11 +258,14 @@ def format_quote(text: str, author: str) -> str:
 
 def pick_quote(category: str) -> tuple[int, str, str]:
     global _last_quote_idx
-    pool = (
-        QUOTES_NIETZSCHE if category == "nietzsche"
-        else QUOTES_SCHOPENHAUER if category == "schopenhauer"
-        else ALL_QUOTES
-    )
+    pools = {
+        "nietzsche": QUOTES_NIETZSCHE,
+        "schopenhauer": QUOTES_SCHOPENHAUER,
+        "kant": QUOTES_KANT,
+        "seneca": QUOTES_SENECA,
+        "aurelius": QUOTES_AURELIUS,
+    }
+    pool = pools.get(category, ALL_QUOTES)
     while True:
         q = random.choice(pool)
         idx = ALL_QUOTES.index(q)
@@ -345,7 +376,7 @@ def run_bot() -> None:
     app.add_handler(CommandHandler("daily", daily))
 
     app.add_handler(MessageHandler(
-        filters.TEXT & filters.Regex(f"^({BTN_NIETZSCHE}|{BTN_SCHOPENHAUER}|{BTN_RANDOM})$"),
+        filters.TEXT & filters.Regex(f"^({BTN_NIETZSCHE}|{BTN_SCHOPENHAUER}|{BTN_KANT}|{BTN_SENECA}|{BTN_AURELIUS}|{BTN_RANDOM})$"),
         category_text,
     ))
 
