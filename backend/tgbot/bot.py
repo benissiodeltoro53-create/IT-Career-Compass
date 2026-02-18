@@ -11,6 +11,8 @@ from telegram import (
     BotCommand,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
     Update,
 )
 from telegram.ext import (
@@ -18,6 +20,8 @@ from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
+    MessageHandler,
+    filters,
 )
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -228,21 +232,12 @@ def generate_quote_image(text: str, author: str) -> bytes:
 
 # --- keyboards ---
 
-def philosopher_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("\u041d\u0456\u0446\u0448\u0435", callback_data="cat_nietzsche"),
-            InlineKeyboardButton("\u0428\u043e\u043f\u0435\u043d\u0433\u0430\u0443\u0435\u0440", callback_data="cat_schopenhauer"),
-        ],
-        [
-            InlineKeyboardButton("\u041a\u0430\u043d\u0442", callback_data="cat_kant"),
-            InlineKeyboardButton("\u0421\u0435\u043d\u0435\u043a\u0430", callback_data="cat_seneca"),
-            InlineKeyboardButton("\u041c\u0430\u0440\u043a \u0410\u0432\u0440\u0435\u043b\u0456\u0439", callback_data="cat_aurelius"),
-        ],
-        [
-            InlineKeyboardButton("\ud83c\udfb2 \u0412\u0438\u043f\u0430\u0434\u043a\u043e\u0432\u0430", callback_data="cat_random"),
-        ],
-    ])
+BTN_RANDOM = "Random Quote"
+
+BOTTOM_KEYBOARD = ReplyKeyboardMarkup(
+    [[KeyboardButton(BTN_RANDOM)]],
+    resize_keyboard=True,
+)
 
 
 def quote_keyboard(quote_index: int, category: str) -> InlineKeyboardMarkup:
@@ -334,23 +329,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "\ud83d\udcdc /quote \u2014 \u043e\u0442\u0440\u0438\u043c\u0430\u0442\u0438 \u0446\u0438\u0442\u0430\u0442\u0443\n"
         "\ud83d\udcc5 /daily \u2014 \u0446\u0438\u0442\u0430\u0442\u0430 \u0434\u043d\u044f\n"
         "\u2699\ufe0f /settings \u2014 \u0449\u043e\u0434\u0435\u043d\u043d\u0430 \u0440\u043e\u0437\u0441\u0438\u043b\u043a\u0430",
+        reply_markup=BOTTOM_KEYBOARD,
     )
 
 
 async def quote_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    idx, text, author = pick_quote("random", context)
     await update.message.reply_text(
-        "\u041e\u0431\u0435\u0440\u0438 \u0444\u0456\u043b\u043e\u0441\u043e\u0444\u0430:",
-        reply_markup=philosopher_keyboard(),
+        format_quote(text, author), reply_markup=quote_keyboard(idx, "random")
     )
 
 
-async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-    cat = query.data.replace("cat_", "")
-    idx, text, author = pick_quote(cat, context)
-    await query.message.reply_text(
-        format_quote(text, author), reply_markup=quote_keyboard(idx, cat)
+async def random_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    idx, text, author = pick_quote("random", context)
+    await update.message.reply_text(
+        format_quote(text, author), reply_markup=quote_keyboard(idx, "random")
     )
 
 
@@ -492,7 +485,10 @@ def run_bot() -> None:
     app.add_handler(CommandHandler("daily", daily))
     app.add_handler(CommandHandler("settings", settings_cmd))
 
-    app.add_handler(CallbackQueryHandler(category_callback, pattern=r"^cat_"))
+    app.add_handler(MessageHandler(
+        filters.TEXT & filters.Regex(f"^{BTN_RANDOM}$"),
+        random_button,
+    ))
     app.add_handler(CallbackQueryHandler(next_callback, pattern=r"^next_"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern=r"^share_"))
     app.add_handler(CallbackQueryHandler(auto_toggle_callback, pattern=r"^auto_"))
