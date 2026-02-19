@@ -340,10 +340,8 @@ def remove_user_job(app: Application, chat_id: int) -> None:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
-        "\u041f\u0440\u0438\u0432\u0456\u0442! \u042f \u0431\u043e\u0442 \u0437 \u0444\u0456\u043b\u043e\u0441\u043e\u0444\u0441\u044c\u043a\u0438\u043c\u0438 \u0446\u0438\u0442\u0430\u0442\u0430\u043c\u0438.\n\n"
-        "\ud83d\udcdc /quote \u2014 \u043e\u0442\u0440\u0438\u043c\u0430\u0442\u0438 \u0446\u0438\u0442\u0430\u0442\u0443\n"
-        "\ud83d\udcc5 /daily \u2014 \u0446\u0438\u0442\u0430\u0442\u0430 \u0434\u043d\u044f\n"
-        "\u2699\ufe0f /settings \u2014 \u0449\u043e\u0434\u0435\u043d\u043d\u0430 \u0440\u043e\u0437\u0441\u0438\u043b\u043a\u0430",
+        "Hello! Philosophy quotes bot.\n\n"
+        "Use buttons below or /settings for daily auto-quote.",
         reply_markup=BOTTOM_KEYBOARD,
     )
 
