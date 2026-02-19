@@ -232,8 +232,8 @@ def generate_quote_image(text: str, author: str) -> bytes:
 
 # --- keyboards ---
 
-BTN_RANDOM = "Random Quote"
-BTN_CHOOSE = "Choose Author"
+BTN_RANDOM = "\u0412\u0438\u043f\u0430\u0434\u043a\u043e\u0432\u0430 \u0446\u0438\u0442\u0430\u0442\u0430"
+BTN_CHOOSE = "\u041e\u0431\u0440\u0430\u0442\u0438 \u0430\u0432\u0442\u043e\u0440\u0430"
 
 BOTTOM_KEYBOARD = ReplyKeyboardMarkup(
     [[KeyboardButton(BTN_RANDOM), KeyboardButton(BTN_CHOOSE)]],
